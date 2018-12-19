@@ -45,6 +45,6 @@ training_list = os.listdir(TRAIN_DIR)
 testing_list = os.listdir(TEST_DIR)
 
 
-#ConvertData(TRAIN_DIR, TRAIN_DEST_DIR)
+ConvertData(TRAIN_DIR, TRAIN_DEST_DIR)
 ConvertData(TEST_DIR,TEST_DEST_DIR, train=False)
 
