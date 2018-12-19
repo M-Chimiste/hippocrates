@@ -6,8 +6,8 @@ import pandas as pd
 import numpy as np
 import cv2
 import os
-from tqdm import tqdm
 from random import shuffle
+from tqdm import tqdm
 
 TRAIN_DIR = 'train'
 TEST_DIR = 'test'
@@ -25,16 +25,19 @@ def ConvertFilename(filename):
 
 def ConvertData(directory, destination, train=True):
     data = []
+    image_rotations = [0, 90, 180, 270]
     for image in tqdm(os.listdir(directory)):
         path = os.path.join(directory,image)
         name = ConvertFilename(image)
         if train:
-            label = int(training_key.loc[training_key['id'] == name]['label'])
-            #label = label['label']
-            #label = int(label)
-            img = cv2.imread(path, cv2.IMREAD_COLOR)
-            data = [[np.array(img)], [np.array(label)]]
-            np.save(f'{destination}/{name}.npy', data)
+            for rotation in image_rotations:
+                label = int(training_key.loc[training_key['id'] == name]['label'])
+                img = cv2.imread(path, cv2.IMREAD_COLOR)
+                (cols, rows) = img.shape[:2]
+                M = cv2.getRotationMatrix2D((cols/2,rows/2),rotation,1)
+                rotatated_image = cv2.warpAffine(img, M, (cols, rows))
+                data = [[np.array(rotatated_image)], [np.array(label)]]
+                np.save(f'{destination}/{name}-{rotation}.npy', data)
         else:
             img = cv2.imread(path, cv2.IMREAD_COLOR)
             data = [np.array(img)]
@@ -47,4 +50,3 @@ testing_list = os.listdir(TEST_DIR)
 
 ConvertData(TRAIN_DIR, TRAIN_DEST_DIR)
 ConvertData(TEST_DIR,TEST_DEST_DIR, train=False)
-
