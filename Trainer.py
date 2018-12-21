@@ -15,36 +15,21 @@ import numpy as np
 import random
 import time
 import datetime
+from tqdm import tqdm
+import fnmatch
 # ------End Imports-------
 
 # ------Begin Global Constants------
-USE_GPU = True
-GPU_PERCENTAGE = 1.0
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 TEST_SIZE = 100
-EPOCHS = 1
+EPOCHS = 5
 LEARNING_RATE = 1e-3
 DECAY = 1e-4
-OPT = keras.optimizers.adam(lr=LEARNING_RATE, decay=DECAY)
-TRAINING_DIR = 'converted_train'
-FILES_AT_ONCE = 10000
+OPT = keras.optimizers.sgd(lr=LEARNING_RATE, momentum=0.001, decay=DECAY)
+TRAINING_DIR = 'block_data_train_rot'
+TESTING_DIR = 'block_data_test_rot'
 
 # -------End Global Constants-------
-
-
-# Function: LimitSession
-# Purpose: Allow for the allocation of a percentage of GPU usage
-# for the training.  This is to ensure that it is possible to limit
-# GPU usage as necessary.
-def LimitSession(gpu_fraction=0.75):
-    gpu_options = tf.GPUOptions(per_process_gpu_memory=gpu_fraction)
-    return tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-
-
-if USE_GPU:
-    # Set the session to the desired GPU percentage
-    backend.set_session(LimitSession(GPU_PERCENTAGE))
-
 
 # ----Begin Model Construction-------
 model = Sequential()
@@ -81,7 +66,7 @@ model.add(Dropout(0.4))
 model.add(Dense(2, activation='softmax'))
 
 # Compile Model
-model.compile(loss='sparse_categorical_crossentropy',
+model.compile(loss='categorical_crossentropy',
             optimizer=OPT,
             metrics=['accuracy'])
 
@@ -90,76 +75,50 @@ tensorboard = TensorBoard(log_dir=f"logs/Stage1-{LEARNING_RATE}-{EPOCHS}-{int(ti
 #-----End Model Construction-----
 
 
-# Function: BalanceData
-# Purpose: Input a list of data and then ensure that the data is balanced
-def BalanceData(data):
-    lengths = [len(data[0]), len(data[1])]
-    min_length = min(lengths)
-    zeros = data[0]
-    ones = data[1]
-    zeros = zeros[:min_length]
-    ones = ones[:min_length]
-    data = zeros + ones
-    random.shuffle(data)
-    return data
+# Function GetListofData
+# Purpose: Recusively grab files in a directory that match a naming convention
+def GetListofData(directory, name):
+    files = []
+    for root, dirnames, filenames in os.walk(directory):
+        for filename in fnmatch.filter(filenames, f'*{name}*'):
+            files.append(os.path.join(root, filename))
+    return files
 
-  
-training_list = os.listdir(TRAINING_DIR)
-random.shuffle(training_list)
+
+x_train_list = GetListofData(TRAINING_DIR, 'x_train')
+y_train_list = GetListofData(TRAINING_DIR, 'y_train')
+x_test_list = GetListofData(TESTING_DIR, 'x_train')
+y_test_list = GetListofData(TESTING_DIR, 'y_train')
+
+x_train_list.sort()
+y_train_list.sort()
+x_test_list.sort()
+y_test_list.sort()
 
 # Iterate over the total number of Epochs
 for i in range(EPOCHS):
-    current = 0
-    increment = FILES_AT_ONCE
-    not_maximum = True
-    maximum = len(training_list)
+    idx = 0
+    for n in tqdm(x_train_list):
+        # Begin training the model
+        x_train_file = x_train_list[idx]
+        y_train_file = y_train_list[idx]
+        x_test_file = x_test_list[idx]
+        y_test_file = y_test_list[idx]
 
-    while not_maximum:
-        try:
-            # empty dictionary to hold image and choice data
-            choices = {
-                0: [],
-                1: []
-            }
-            # iterate over the data through a specified increment
-            for img in training_list[current:current+increment]:
-                full_path = os.path.join(TRAINING_DIR, img)
-                data_file = np.load(full_path)
-                data_file = list(data_file)
-                for info in data_file:
-                    choice = info[1]
-                    if choice == 0:
-                        converted_choice = [1, 0]
-                        choices[choice].append([info[0], converted_choice])
-                    elif choice == 1:
-                        converted_choice = [0, 1]
-                        choices[choice].append([info[0], converted_choice])
+
+        x_train = np.load(x_train_file)
+        y_train = np.load(y_train_file)
+        x_test = np.load(x_test_file)
+        y_test = np.load(y_test_file)
+        model.fit(x_train, y_train,
+                batch_size=BATCH_SIZE,
+                validation_data=(x_test, y_test),
+                shuffle=False,
+                verbose=1,
+                callbacks=[tensorboard])
+        idx += 1    
+        model.save(f'HippocratesCNN-{EPOCHS}-epochs-{LEARNING_RATE}-lr-STAGE1-SGD')
+
+         
+
             
-            shuffled_data = BalanceData(choices)
-            choices = None  # Get the data out of memory
-
-            # define and create the training and testing sets
-            x_train = np.array([i[0] for i in shuffled_data[:TEST_SIZE]]).reshape(-1, 96, 96, 3)
-            y_train = np.array([i[1] for i in shuffled_data[:TEST_SIZE]])
-
-            x_test = np.array([i[0] for i in shuffled_data[-TEST_SIZE:]]).reshape(-1, 96, 96, 3)
-            y_test = np.array([i[1] for i in shuffled_data[-TEST_SIZE:]])
-
-            # Begin training the model
-            model.fit(x_train, y_train,
-                    batch_size=BATCH_SIZE,
-                    validation_data=(x_test, y_test),
-                    shuffle=False,
-                    verbose=1,
-                    callbacks=[tensorboard])
-            
-            # Save the model per each iteration
-            model.save(f'HippocratesCNN-{EPOCHS}-epochs-{LEARNING_RATE}-lr-STAGE1')
-            current += increment
-
-            if current >= maximum:
-                not_maximum = False
-
-        except Exception as e:
-            print(e)
-            pass # bite me
