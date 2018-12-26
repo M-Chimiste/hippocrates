@@ -129,15 +129,4 @@ def CreateBalancedBlockedData(source_directory, dest_directory, block_size=FILES
         if current >= maximum:
             not_maximum = False
 
-# Operations
 
-training_list = os.listdir(TRAIN_DIR)
-testing_list = os.listdir(TEST_DIR)
-
-CreateValidationSet(TRAIN_DEST_DIR, VAL_DIR)
-
-ConvertData(TRAIN_DIR, TRAIN_DEST_DIR)
-ConvertData(TEST_DIR, TEST_DEST_DIR, train=False)
-
-CreateBalancedBlockedData("converted_train_rotated", "block_data_train_rot")
-CreateBalancedBlockedData("validation_rotation", "block_data_test_rot", block_size=15000)
