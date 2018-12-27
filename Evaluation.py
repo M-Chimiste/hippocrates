@@ -31,10 +31,7 @@ def MakePrediction(model, data):
         text_prediction = "Not Metastatic"
     elif scalar_pred == 1:
         text_prediction = "Metastatic"
-    dict_prediction = {"Final Prediction": text_prediction,
-                        "Non-Metastatic Confidence": prediction[0],
-                        "Metastaic Confidence": prediction[1]}
-    return dict_prediction
+    return text_prediction,prediction
 
 
 
@@ -64,8 +61,73 @@ def NaiveValidate(testing_dir, model):
 
         testing_file_x = np.load(full_path_x)
         testing_file_y = np.load(full_path_y)
+        
+        positive = []
+        negative = []
+        false_pos = []
+        false_neg = []
+
+        act_pos = []
+        act_neg = []
+
         for i in range(len(testing_file_x)):
             data = testing_file_x[i]
             result = testing_file_y[i]
-            prediction = MakePrediction(model, data)
             
+            if result == 0:
+                act_neg.append(result)
+                cancer = False
+            elif result == 1:
+                act_pos.append(result)
+                cancer = True
+            
+            text_prediction, prediction = MakePrediction(model, data)
+            numeric_prediction = np.argmax(prediction)  # 0 or 1
+
+            if result == prediction and cancer:
+                positive.append(result)
+            elif result == prediction and cancer is False:
+                negative.append(result)
+            elif result != prediction and cancer:
+                false_neg.append(numeric_prediction)
+            elif result != prediction and cancer is False:
+                false_pos.append(numeric_prediction)
+        
+        total_cancer_samples = len(positive)
+        total_non_cancer_samples = len(negative)
+        total_samples = len(testing_file_x)
+
+        acc_pos = round(float(len(positive) / total_cancer_samples), 3)
+        acc_neg = round(float(len(negative) / total_non_cancer_samples), 3)
+        overall = round(float((len(positive) + len(negative)) / total_samples), 3)
+        acc_fpos = round(float(len(false_pos) / total_cancer_samples), 3)
+        acc_fneg = round(float(len(false_neg) / total_non_cancer_samples), 3)
+
+        metrics = {"Overall": overall,
+                "Positive Accuracy": acc_pos,
+                "Negative Accuracy": acc_neg,
+                "False Positive Rate": acc_fpos,
+                "False Negative Rate": acc_fneg
+        }
+
+        confusion = {"Positive": len(positive),
+                    "Negative": len(negative),
+                    "False Pos": len(false_pos),
+                    "False Neg": len(false_neg)}
+        return metrics, confusion
+            
+
+# CreatePredictionsFromImages TODO
+# Will input a directory of images and output a report detailing the
+# algorithm's predictions as an excel file
+def CreatePredictionsFromImages(input_images_dir):
+    return
+
+
+# CreatePredictionsFromReport TODO
+# Will imput a filename for a report that already exists (xlsx format).
+# Then will take the sample names, and the image dir and create a prediction outputting an 
+# excel file
+def CreatePredictionsFromReport(report_file, image_dir):
+    return
+
