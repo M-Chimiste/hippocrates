@@ -14,7 +14,7 @@ from tqdm import tqdm
 # -----Start Global Variables-------
 TESTING_DIR = "block_data_test_rot"
 X_NAME = 'x_train'
-Y_NAME = 'y_name'
+Y_NAME = 'y_train'
 MODEL_NAME =''
 # ------End Global Variables------
 
