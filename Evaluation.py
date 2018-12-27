@@ -1,4 +1,4 @@
-# TestingGrounds.py
+# Evaluation.py
 # Purpose: To evaluate the different trained models
 # ------Begin Imports------
 import fnmatch
