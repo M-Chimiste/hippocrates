@@ -148,14 +148,8 @@ def CreatePredictionsFromImages(input_images_dir, model=MODEL_NAME, file_ext='.i
         sample.strip(file_ext)
         rpt_dict = {'Sample': sample, 'Text Classification': text_prediction, 'Confidence': prediction}
         counter += 1
-        #TODO create a temporary dataframe to house each row of data then use concat to pull them all together
-        #TODO once complete last line is to save as a CSV or XLSX or some other format.
+      
     return
 
 
-# CreatePredictionsFromReport TODO
-# Will imput a filename for a report that already exists (xlsx format).
-# Then will take the sample names, and the image dir and create a prediction outputting an 
-# excel file
-def CreatePredictionsFromReport(report_file, image_dir, file_ext= '.img'):
-    return
+
